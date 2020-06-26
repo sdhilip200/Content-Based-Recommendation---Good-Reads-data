@@ -1,0 +1,894 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Untitled21.ipynb",
+      "provenance": [],
+      "authorship_tag": "ABX9TyP/v6HQDwxc+kptS0LR7wPD",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "accelerator": "GPU"
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/sdhilip200/Content-Based-Recommendation---Good-Reads-data/blob/master/Content%20recommendation%20_%20word2vec\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "MFpf99rpjaTA",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 51
+        },
+        "outputId": "f94d5654-44f0-49fd-b771-0ca4568a1a96"
+      },
+      "source": [
+        "# Importing necessary libraries\n",
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "from nltk.corpus import stopwords\n",
+        "from sklearn.metrics.pairwise import linear_kernel\n",
+        "from sklearn.feature_extraction.text import CountVectorizer\n",
+        "from sklearn.feature_extraction.text import TfidfVectorizer\n",
+        "from nltk.tokenize import RegexpTokenizer\n",
+        "import re\n",
+        "import string\n",
+        "import random\n",
+        "from PIL import Image\n",
+        "import requests\n",
+        "from io import BytesIO\n",
+        "import matplotlib.pyplot as plt\n",
+        "%matplotlib inline\n",
+        "# Reading the file\n",
+        "import nltk\n",
+        "nltk.download('stopwords')\n",
+        "from sklearn.metrics.pairwise import cosine_similarity"
+      ],
+      "execution_count": 31,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "[nltk_data] Downloading package stopwords to /root/nltk_data...\n",
+            "[nltk_data]   Package stopwords is already up-to-date!\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "vHfkyO_vjdVA",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "df = pd.read_csv(\"test.csv\")"
+      ],
+      "execution_count": 3,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "BDvUYfOZjvB5",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "#Utitlity functions for removing ASCII characters, converting lower case, removing stop words, html and punctuation from description\n",
+        "\n",
+        "def _removeNonAscii(s):\n",
+        "    return \"\".join(i for i in s if  ord(i)<128)\n",
+        "\n",
+        "def make_lower_case(text):\n",
+        "    return text.lower()\n",
+        "\n",
+        "def remove_stop_words(text):\n",
+        "    text = text.split()\n",
+        "    stops = set(stopwords.words(\"english\"))\n",
+        "    text = [w for w in text if not w in stops]\n",
+        "    text = \" \".join(text)\n",
+        "    return text\n",
+        "\n",
+        "def remove_html(text):\n",
+        "    html_pattern = re.compile('<.*?>')\n",
+        "    return html_pattern.sub(r'', text)\n",
+        "\n",
+        "def remove_punctuation(text):\n",
+        "    tokenizer = RegexpTokenizer(r'\\w+')\n",
+        "    text = tokenizer.tokenize(text)\n",
+        "    text = \" \".join(text)\n",
+        "    return text"
+      ],
+      "execution_count": 4,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "sOiemLX0kvQ8",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "df['Desc'] = df['Desc'].astype(str)"
+      ],
+      "execution_count": 5,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "pIHGfhCv2Qa6",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "df['title'] = df['title'].astype(str)"
+      ],
+      "execution_count": 69,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "J1JAUqqh2AF9",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "df['cleaned'] = df['combined'].apply(_removeNonAscii)\n",
+        "\n",
+        "df['cleaned'] = df.cleaned.apply(func = make_lower_case)\n",
+        "df['cleaned'] = df.cleaned.apply(func = remove_stop_words)\n",
+        "df['cleaned'] = df.cleaned.apply(func=remove_punctuation)\n",
+        "df['cleaned'] = df.cleaned.apply(func=remove_html)\n"
+      ],
+      "execution_count": 73,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "NQ6MPBZd2WmM",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "df['combined'] = df['author'] + \" \" + df['genre'] + \" \" + df['title'] + \" \" + df['Desc']"
+      ],
+      "execution_count": 71,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "nI0oPt8wxqGM",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 793
+        },
+        "outputId": "7f3fb238-e5c4-4639-b60d-a649bf9277af"
+      },
+      "source": [
+        "df"
+      ],
+      "execution_count": 74,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>Unnamed: 0</th>\n",
+              "      <th>Desc</th>\n",
+              "      <th>author</th>\n",
+              "      <th>genre</th>\n",
+              "      <th>image_link</th>\n",
+              "      <th>rating</th>\n",
+              "      <th>title</th>\n",
+              "      <th>cleaned_desc</th>\n",
+              "      <th>cleaned_title</th>\n",
+              "      <th>combined</th>\n",
+              "      <th>cleaned</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0</td>\n",
+              "      <td>We know that power is shifting: From West to E...</td>\n",
+              "      <td>Moisés Naím</td>\n",
+              "      <td>Business</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>3.63</td>\n",
+              "      <td>The End of Power: From Boardrooms to Battlefie...</td>\n",
+              "      <td>know power shifting west east north south pres...</td>\n",
+              "      <td>end power boardrooms battlefields churches sta...</td>\n",
+              "      <td>Moisés Naím Business The End of Power: From Bo...</td>\n",
+              "      <td>moiss nam business end power boardrooms battle...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>1</td>\n",
+              "      <td>Following the success of The Accidental Billio...</td>\n",
+              "      <td>Blake J. Harris</td>\n",
+              "      <td>Business</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>3.94</td>\n",
+              "      <td>Console Wars: Sega, Nintendo, and the Battle t...</td>\n",
+              "      <td>following success accidental billionaires mone...</td>\n",
+              "      <td>console wars sega nintendo battle defined gene...</td>\n",
+              "      <td>Blake J. Harris Business Console Wars: Sega, N...</td>\n",
+              "      <td>blake j harris business console wars sega nint...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>2</td>\n",
+              "      <td>How to tap the power of social software and ne...</td>\n",
+              "      <td>Chris Brogan</td>\n",
+              "      <td>Business</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>3.78</td>\n",
+              "      <td>Trust Agents: Using the Web to Build Influence...</td>\n",
+              "      <td>tap power social software networks build busin...</td>\n",
+              "      <td>trust agents using web build influence improve...</td>\n",
+              "      <td>Chris Brogan Business Trust Agents: Using the ...</td>\n",
+              "      <td>chris brogan business trust agents using web b...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>3</td>\n",
+              "      <td>William J. Bernstein is an American financial ...</td>\n",
+              "      <td>William J. Bernstein</td>\n",
+              "      <td>Business</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>4.20</td>\n",
+              "      <td>The Four Pillars of Investing</td>\n",
+              "      <td>william j bernstein american financial theoris...</td>\n",
+              "      <td>four pillars investing</td>\n",
+              "      <td>William J. Bernstein Business The Four Pillars...</td>\n",
+              "      <td>william j bernstein business four pillars inve...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>4</td>\n",
+              "      <td>Amazing book. And I joined Steve Jobs and many...</td>\n",
+              "      <td>Akio Morita</td>\n",
+              "      <td>Business</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>4.05</td>\n",
+              "      <td>Made in Japan: Akio Morita and Sony</td>\n",
+              "      <td>amazing book joined steve jobs many akio morit...</td>\n",
+              "      <td>made japan akio morita sony</td>\n",
+              "      <td>Akio Morita Business Made in Japan: Akio Morit...</td>\n",
+              "      <td>akio morita business made japan akio morita so...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1396</th>\n",
+              "      <td>1464</td>\n",
+              "      <td>A shocking scientific discovery. A conspiracy ...</td>\n",
+              "      <td>Dan Brown</td>\n",
+              "      <td>Non-Fiction</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>3.71</td>\n",
+              "      <td>Deception Point</td>\n",
+              "      <td>shocking scientific discovery conspiracy stagg...</td>\n",
+              "      <td>deception point</td>\n",
+              "      <td>Dan Brown Non-Fiction Deception Point A shocki...</td>\n",
+              "      <td>dan brown non fiction deception point shocking...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1397</th>\n",
+              "      <td>1465</td>\n",
+              "      <td>The year is 1984 and the city is Tokyo.A young...</td>\n",
+              "      <td>Haruki Murakami</td>\n",
+              "      <td>Non-Fiction</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>3.92</td>\n",
+              "      <td>1Q84</td>\n",
+              "      <td>year 1984 city tokyo a young woman named aomam...</td>\n",
+              "      <td>1q84</td>\n",
+              "      <td>Haruki Murakami Non-Fiction 1Q84 The year is 1...</td>\n",
+              "      <td>haruki murakami non fiction 1q84 year 1984 cit...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1398</th>\n",
+              "      <td>1466</td>\n",
+              "      <td>Oryx and Crake is at once an unforgettable lov...</td>\n",
+              "      <td>Margaret Atwood</td>\n",
+              "      <td>Non-Fiction</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>4.01</td>\n",
+              "      <td>Oryx and Crake</td>\n",
+              "      <td>oryx crake unforgettable love story compelling...</td>\n",
+              "      <td>oryx crake</td>\n",
+              "      <td>Margaret Atwood Non-Fiction Oryx and Crake Ory...</td>\n",
+              "      <td>margaret atwood non fiction oryx crake oryx cr...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1399</th>\n",
+              "      <td>1467</td>\n",
+              "      <td>Told in Kvothe's own voice, this is the tale o...</td>\n",
+              "      <td>Patrick Rothfuss</td>\n",
+              "      <td>Non-Fiction</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>4.54</td>\n",
+              "      <td>The Name of the Wind</td>\n",
+              "      <td>told kvothe s voice tale magically gifted youn...</td>\n",
+              "      <td>name wind</td>\n",
+              "      <td>Patrick Rothfuss Non-Fiction The Name of the W...</td>\n",
+              "      <td>patrick rothfuss non fiction name wind told kv...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1400</th>\n",
+              "      <td>1468</td>\n",
+              "      <td>Crazy Rich Asians is the outrageously funny de...</td>\n",
+              "      <td>Kevin Kwan</td>\n",
+              "      <td>Non-Fiction</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>NaN</td>\n",
+              "      <td>nan</td>\n",
+              "      <td>crazy rich asians outrageously funny debut nov...</td>\n",
+              "      <td>nan</td>\n",
+              "      <td>Kevin Kwan Non-Fiction nan Crazy Rich Asians i...</td>\n",
+              "      <td>kevin kwan non fiction nan crazy rich asians o...</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>1401 rows × 11 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "      Unnamed: 0  ...                                            cleaned\n",
+              "0              0  ...  moiss nam business end power boardrooms battle...\n",
+              "1              1  ...  blake j harris business console wars sega nint...\n",
+              "2              2  ...  chris brogan business trust agents using web b...\n",
+              "3              3  ...  william j bernstein business four pillars inve...\n",
+              "4              4  ...  akio morita business made japan akio morita so...\n",
+              "...          ...  ...                                                ...\n",
+              "1396        1464  ...  dan brown non fiction deception point shocking...\n",
+              "1397        1465  ...  haruki murakami non fiction 1q84 year 1984 cit...\n",
+              "1398        1466  ...  margaret atwood non fiction oryx crake oryx cr...\n",
+              "1399        1467  ...  patrick rothfuss non fiction name wind told kv...\n",
+              "1400        1468  ...  kevin kwan non fiction nan crazy rich asians o...\n",
+              "\n",
+              "[1401 rows x 11 columns]"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 74
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "sUdgvEJqks3k",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 204
+        },
+        "outputId": "f59f1ec8-cae4-4534-efe6-761abd8e5732"
+      },
+      "source": [
+        "!wget -P /root/input/ -c \"https://s3.amazonaws.com/dl4j-distribution/GoogleNews-vectors-negative300.bin.gz\""
+      ],
+      "execution_count": 7,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "--2020-06-26 03:34:34--  https://s3.amazonaws.com/dl4j-distribution/GoogleNews-vectors-negative300.bin.gz\n",
+            "Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.217.38.174\n",
+            "Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.217.38.174|:443... connected.\n",
+            "HTTP request sent, awaiting response... 200 OK\n",
+            "Length: 1647046227 (1.5G) [application/x-gzip]\n",
+            "Saving to: ‘/root/input/GoogleNews-vectors-negative300.bin.gz’\n",
+            "\n",
+            "GoogleNews-vectors- 100%[===================>]   1.53G  16.5MB/s    in 1m 40s  \n",
+            "\n",
+            "2020-06-26 03:36:14 (15.8 MB/s) - ‘/root/input/GoogleNews-vectors-negative300.bin.gz’ saved [1647046227/1647046227]\n",
+            "\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "mKUCC6MrmCJo",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "from gensim.models import Word2Vec\n",
+        "from gensim.models.phrases import Phrases, Phraser\n",
+        "\n",
+        "from sklearn.decomposition import PCA\n",
+        "from matplotlib import pyplot\n",
+        "from gensim.models import KeyedVectors"
+      ],
+      "execution_count": 8,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "oGVSIbRHk_pn",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 71
+        },
+        "outputId": "348e0c8f-d44d-484d-8d14-9103b97e14d1"
+      },
+      "source": [
+        "EMBEDDING_FILE = '/root/input/GoogleNews-vectors-negative300.bin.gz'\n",
+        "google_word2vec = KeyedVectors.load_word2vec_format(EMBEDDING_FILE, binary=True)\n"
+      ],
+      "execution_count": 9,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "/usr/local/lib/python3.6/dist-packages/smart_open/smart_open_lib.py:253: UserWarning: This function is deprecated, use smart_open.open instead. See the migration notes for details: https://github.com/RaRe-Technologies/smart_open/blob/master/README.rst#migrating-to-the-new-open-function\n",
+            "  'See the migration notes for details: %s' % _MIGRATION_NOTES_URL\n"
+          ],
+          "name": "stderr"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "fvu_Z9QDv2Zy",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "i=0\n",
+        "list_of_sentance=[]\n",
+        "for sentance in df['cleaned']:\n",
+        "    list_of_sentance.append(sentance.split())"
+      ],
+      "execution_count": 76,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "PbC7_Zx1l8sc",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 71
+        },
+        "outputId": "1953913e-0c4b-40ee-9d04-8a488e1a1018"
+      },
+      "source": [
+        "\n",
+        "%%time\n",
+        "google_model = Word2Vec(size = 300, window=5, min_count = 2, workers = -1)\n",
+        "google_model.build_vocab(list_of_sentance)\n",
+        "\n",
+        "#model.intersect_word2vec_format('./word2vec/GoogleNews-vectors-negative300.bin', lockf=1.0, binary=True)\n",
+        "\n",
+        "google_model.intersect_word2vec_format(EMBEDDING_FILE, lockf=1.0, binary=True)\n",
+        "\n",
+        "google_model.train(list_of_sentance, total_examples=google_model.corpus_count, epochs = 5)"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "/usr/local/lib/python3.6/dist-packages/smart_open/smart_open_lib.py:253: UserWarning: This function is deprecated, use smart_open.open instead. See the migration notes for details: https://github.com/RaRe-Technologies/smart_open/blob/master/README.rst#migrating-to-the-new-open-function\n",
+            "  'See the migration notes for details: %s' % _MIGRATION_NOTES_URL\n"
+          ],
+          "name": "stderr"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "jIwnKF80vwF5",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 241
+        },
+        "outputId": "98c6a4c9-a580-46db-aed4-0c4fca3bb2cf"
+      },
+      "source": [
+        "google_model.wv.most_similar(positive=[\"life\"])"
+      ],
+      "execution_count": 39,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "/usr/local/lib/python3.6/dist-packages/gensim/matutils.py:737: FutureWarning: Conversion of the second argument of issubdtype from `int` to `np.signedinteger` is deprecated. In future, it will be treated as `np.int64 == np.dtype(int).type`.\n",
+            "  if np.issubdtype(vec.dtype, np.int):\n"
+          ],
+          "name": "stderr"
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "[('lives', 0.6027060747146606),\n",
+              " ('lifetime', 0.42942190170288086),\n",
+              " ('living', 0.41517210006713867),\n",
+              " ('family', 0.41159164905548096),\n",
+              " ('everyday', 0.40794870257377625),\n",
+              " ('humanity', 0.40773287415504456),\n",
+              " ('childhood', 0.4068482220172882),\n",
+              " ('society', 0.406668484210968),\n",
+              " ('motherhood', 0.4046342074871063),\n",
+              " ('happiness', 0.40317070484161377)]"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 39
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "6fqQbzLrwZiF",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "def vectors(x):\n",
+        "    \n",
+        "    global array_embeddings\n",
+        "    array_embeddings = []\n",
+        "\n",
+        "    for line in df['cleaned']:\n",
+        "        avgword2vec = None\n",
+        "        count = 0\n",
+        "        for word in line.split():\n",
+        "            if word in google_model.wv.vocab:\n",
+        "                count += 1\n",
+        "                if avgword2vec is None:\n",
+        "                    avgword2vec = google_model[word]\n",
+        "                else:\n",
+        "                    avgword2vec = avgword2vec + google_model[word]\n",
+        "                \n",
+        "        if avgword2vec is not None:\n",
+        "            avgword2vec = avgword2vec / count\n",
+        "        \n",
+        "            array_embeddings.append(avgword2vec)\n"
+      ],
+      "execution_count": 40,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "etB43YBAwrwi",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "#Recommending hotel accomodation \n",
+        "def recommendations(title):\n",
+        "    \n",
+        "    vectors(df)\n",
+        "    df1.reset_index(drop = True, inplace = True)\n",
+        "    \n",
+        "    # Converting the ingredients into vectors\n",
+        "\n",
+        "    cosine_similarities = cosine_similarity(array_embeddings, array_embeddings)\n",
+        "    \n",
+        "    #sig = sigmoid_kernel(tfidf_matrix, tfidf_matrix)\n",
+        "    \n",
+        "    hotels = df[['title']]\n",
+        "    #Reverse mapping of the index\n",
+        "    indices = pd.Series(df.index, index = df['title']).drop_duplicates()\n",
+        "    \n",
+        "       \n",
+        "    idx = indices[title]\n",
+        "    sim_scores = list(enumerate(cosine_similarities[idx]))\n",
+        "    sim_scores = sorted(sim_scores, key = lambda x: x[1], reverse = True)\n",
+        "    sim_scores = sim_scores[1:6]\n",
+        "    hotel_indices = [i[0] for i in sim_scores]\n",
+        "    return hotels.iloc[hotel_indices]"
+      ],
+      "execution_count": 46,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "MCbdFcdew2oI",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 221
+        },
+        "outputId": "d6782e72-4b08-425a-843d-c9b65c5a1da9"
+      },
+      "source": [
+        "df1['author'].value_counts()"
+      ],
+      "execution_count": 58,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "J.K. Rowling          8\n",
+              "Dan Brown             6\n",
+              "George R.R. Martin    5\n",
+              "J.R.R. Tolkien        5\n",
+              "Neil Gaiman           4\n",
+              "                     ..\n",
+              "Ray Bradbury          1\n",
+              "Betty Smith           1\n",
+              "John Irving           1\n",
+              "Junot Díaz            1\n",
+              "Robin Sloan           1\n",
+              "Name: author, Length: 150, dtype: int64"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 58
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "zBiZcvy2w4rL",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 799
+        },
+        "outputId": "d65dd9ad-9744-429e-9ad1-a80d3d802c78"
+      },
+      "source": [
+        "recommendations(\"The Murder of Roger Ackroyd\")"
+      ],
+      "execution_count": 65,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "/usr/local/lib/python3.6/dist-packages/ipykernel_launcher.py:13: DeprecationWarning: Call to deprecated `__getitem__` (Method will be removed in 4.0.0, use self.wv.__getitem__() instead).\n",
+            "  del sys.path[0]\n",
+            "/usr/local/lib/python3.6/dist-packages/ipykernel_launcher.py:15: DeprecationWarning: Call to deprecated `__getitem__` (Method will be removed in 4.0.0, use self.wv.__getitem__() instead).\n",
+            "  from ipykernel import kernelapp as app\n"
+          ],
+          "name": "stderr"
+        },
+        {
+          "output_type": "error",
+          "ename": "KeyError",
+          "evalue": "ignored",
+          "traceback": [
+            "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+            "\u001b[0;31mTypeError\u001b[0m                                 Traceback (most recent call last)",
+            "\u001b[0;32m/usr/local/lib/python3.6/dist-packages/pandas/core/indexes/base.py\u001b[0m in \u001b[0;36mget_value\u001b[0;34m(self, series, key)\u001b[0m\n\u001b[1;32m   4410\u001b[0m             \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 4411\u001b[0;31m                 \u001b[0;32mreturn\u001b[0m \u001b[0mlibindex\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mget_value_at\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ms\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   4412\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mIndexError\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/index.pyx\u001b[0m in \u001b[0;36mpandas._libs.index.get_value_at\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/index.pyx\u001b[0m in \u001b[0;36mpandas._libs.index.get_value_at\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/util.pxd\u001b[0m in \u001b[0;36mpandas._libs.util.get_value_at\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/util.pxd\u001b[0m in \u001b[0;36mpandas._libs.util.validate_indexer\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;31mTypeError\u001b[0m: 'str' object cannot be interpreted as an integer",
+            "\nDuring handling of the above exception, another exception occurred:\n",
+            "\u001b[0;31mKeyError\u001b[0m                                  Traceback (most recent call last)",
+            "\u001b[0;32m<ipython-input-65-151c70ca2b0a>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[0;32m----> 1\u001b[0;31m \u001b[0mrecommendations\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"The Murder of Roger Ackroyd\"\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
+            "\u001b[0;32m<ipython-input-46-346195b21fcb>\u001b[0m in \u001b[0;36mrecommendations\u001b[0;34m(title)\u001b[0m\n\u001b[1;32m     16\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     17\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 18\u001b[0;31m     \u001b[0midx\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mindices\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mtitle\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     19\u001b[0m     \u001b[0msim_scores\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mlist\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0menumerate\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mcosine_similarities\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0midx\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     20\u001b[0m     \u001b[0msim_scores\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0msorted\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0msim_scores\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mkey\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;32mlambda\u001b[0m \u001b[0mx\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mx\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;36m1\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mreverse\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;32mTrue\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.6/dist-packages/pandas/core/series.py\u001b[0m in \u001b[0;36m__getitem__\u001b[0;34m(self, key)\u001b[0m\n\u001b[1;32m    869\u001b[0m         \u001b[0mkey\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mcom\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mapply_if_callable\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mkey\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    870\u001b[0m         \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 871\u001b[0;31m             \u001b[0mresult\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mindex\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mget_value\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    872\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    873\u001b[0m             \u001b[0;32mif\u001b[0m \u001b[0;32mnot\u001b[0m \u001b[0mis_scalar\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mresult\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.6/dist-packages/pandas/core/indexes/base.py\u001b[0m in \u001b[0;36mget_value\u001b[0;34m(self, series, key)\u001b[0m\n\u001b[1;32m   4417\u001b[0m                     \u001b[0;32mraise\u001b[0m \u001b[0mInvalidIndexError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mkey\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   4418\u001b[0m                 \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 4419\u001b[0;31m                     \u001b[0;32mraise\u001b[0m \u001b[0me1\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   4420\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mException\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   4421\u001b[0m                 \u001b[0;32mraise\u001b[0m \u001b[0me1\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.6/dist-packages/pandas/core/indexes/base.py\u001b[0m in \u001b[0;36mget_value\u001b[0;34m(self, series, key)\u001b[0m\n\u001b[1;32m   4403\u001b[0m         \u001b[0mk\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_convert_scalar_indexer\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mk\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mkind\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;34m\"getitem\"\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   4404\u001b[0m         \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m-> 4405\u001b[0;31m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_engine\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mget_value\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ms\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mk\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mtz\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mgetattr\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mseries\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdtype\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m\"tz\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m   4406\u001b[0m         \u001b[0;32mexcept\u001b[0m \u001b[0mKeyError\u001b[0m \u001b[0;32mas\u001b[0m \u001b[0me1\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   4407\u001b[0m             \u001b[0;32mif\u001b[0m \u001b[0mlen\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;34m>\u001b[0m \u001b[0;36m0\u001b[0m \u001b[0;32mand\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mholds_integer\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mor\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mis_boolean\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/index.pyx\u001b[0m in \u001b[0;36mpandas._libs.index.IndexEngine.get_value\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/index.pyx\u001b[0m in \u001b[0;36mpandas._libs.index.IndexEngine.get_value\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/index.pyx\u001b[0m in \u001b[0;36mpandas._libs.index.IndexEngine.get_loc\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/hashtable_class_helper.pxi\u001b[0m in \u001b[0;36mpandas._libs.hashtable.PyObjectHashTable.get_item\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;32mpandas/_libs/hashtable_class_helper.pxi\u001b[0m in \u001b[0;36mpandas._libs.hashtable.PyObjectHashTable.get_item\u001b[0;34m()\u001b[0m\n",
+            "\u001b[0;31mKeyError\u001b[0m: 'The Murder of Roger Ackroyd'"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "qVUVrLdVw8og",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 162
+        },
+        "outputId": "265d742e-713c-4f67-f101-154c6660fc32"
+      },
+      "source": [
+        "df1[df1['author'] == \"Agatha Christie\"]"
+      ],
+      "execution_count": 66,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>Unnamed: 0</th>\n",
+              "      <th>Desc</th>\n",
+              "      <th>author</th>\n",
+              "      <th>genre</th>\n",
+              "      <th>image_link</th>\n",
+              "      <th>rating</th>\n",
+              "      <th>title</th>\n",
+              "      <th>cleaned_desc</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>133</th>\n",
+              "      <td>1386</td>\n",
+              "      <td>First, there were ten—a curious assortment of ...</td>\n",
+              "      <td>Agatha Christie</td>\n",
+              "      <td>Non-Fiction</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>4.26</td>\n",
+              "      <td>And Then There Were None</td>\n",
+              "      <td>first tena curious assortment strangers summon...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>208</th>\n",
+              "      <td>1461</td>\n",
+              "      <td>Just after midnight, a snowdrift stops the Ori...</td>\n",
+              "      <td>Agatha Christie</td>\n",
+              "      <td>Non-Fiction</td>\n",
+              "      <td>https://i.gr-assets.com/images/S/compressed.ph...</td>\n",
+              "      <td>4.17</td>\n",
+              "      <td>Murder on the Orient Express</td>\n",
+              "      <td>midnight snowdrift stops orient express tracks...</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "     Unnamed: 0  ...                                       cleaned_desc\n",
+              "133        1386  ...  first tena curious assortment strangers summon...\n",
+              "208        1461  ...  midnight snowdrift stops orient express tracks...\n",
+              "\n",
+              "[2 rows x 8 columns]"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 66
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "EX4TdbsazgTR",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 68
+        },
+        "outputId": "1d73fd0b-4e0b-4b4b-d6a2-6e3718a880cd"
+      },
+      "source": [
+        "df.columns"
+      ],
+      "execution_count": 67,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "Index(['Unnamed: 0', 'Desc', 'author', 'genre', 'image_link', 'rating',\n",
+              "       'title', 'cleaned_desc'],\n",
+              "      dtype='object')"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 67
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "sszDCVaq18d3",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
